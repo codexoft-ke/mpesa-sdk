@@ -559,10 +559,14 @@ This project is licensed under the MIT License. See the LICENSE file for details
 
 ## Changelog
 
-### [1.0.0] - 2024-XX-XX
+### [1.0.0/1] - 2024-12-30
 - Initial release
 - Basic M-Pesa integration features
 - Comprehensive documentation
+
+### [1.0.2] - 2024-12-31
+- Added Mpesa Exception
+- Some bugs fixes
 
 ### [Unreleased]
 - Future features and improvements
