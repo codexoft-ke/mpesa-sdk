@@ -1,0 +1,19 @@
+{
+    "name": "codexoft/mpesa-sdk",
+    "description": "A PHP SDK for seamless integration with M-Pesa payment gateway, providing easy-to-use methods for transactions and payment processing",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "codexoft\\MpesaSdk\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "codexoft",
+            "email": "wainainamartin29@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {}
+}
