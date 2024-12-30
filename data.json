@@ -1,0 +1,27 @@
+{
+    "Result": {
+        "ResultType": 0,
+        "ResultCode": 1,
+        "ResultDesc": "The balance is insufficient for the transaction.",
+        "OriginatorConversationID": "4956-4ed3-b5b6-755023a4d79226366947",
+        "ConversationID": "AG_20241230_20705fbc714949638ba4",
+        "TransactionID": "SLU5DXC5AR",
+        "ResultParameters": {
+            "ResultParameter": {
+                "Key": "DebitAccountCurrentBalance",
+                "Value": "{Amount={CurrencyCode=KES, MinimumAmount=0, BasicAmount=0.00}}"
+            }
+        },
+        "ReferenceData": {
+            "ReferenceItem": [{
+                "Key": "BillReferenceNumber",
+                "Value": "TEST"
+            }, {
+                "Key": "QueueTimeoutURL",
+                "Value": "https:\/\/internalapi.safaricom.net\/mpesa\/b2bresults\/v1\/submit"
+            }, {
+                "Key": "Occassion"
+            }]
+        }
+    }
+}
