@@ -10,8 +10,8 @@
  */
 namespace codexoft\MpesaSdk;
 
-use Exception;
-use InvalidArgumentException;
+use codexoft\MpesaSdk\MpesaException;
+
 
 /**
  * Summary of Mpesa
@@ -105,7 +105,7 @@ class Mpesa
      *     }
      *   - businessShortCode: string Your paybill no or till
      *   - shortCodeType: string ('paybill' or 'till')
-     * @throws InvalidArgumentException if required parameters are missing.
+     * @throws MpesaException if required parameters are missing.
      */
     public function __construct(array $config)
     {
@@ -156,28 +156,28 @@ class Mpesa
      * Validates the configuration array.
      *
      * @param array $config
-     * @throws InvalidArgumentException
+     * @throws MpesaException
      */
     private function validateConfig(array $config): void
     {
         $requiredKeys = ['env', 'credentials', 'appInfo', 'businessShortCode', 'shortCodeType', 'requester'];
         foreach ($requiredKeys as $key) {
             if (!isset($config[$key])) {
-                throw new InvalidArgumentException("Missing required configuration parameter: $key");
+                throw new MpesaException("Missing required configuration parameter: $key");
             }
         }
 
         $requiredCredentials = ['passKey', 'initiatorPass', 'initiatorName'];
         foreach ($requiredCredentials as $key) {
             if (!isset($config['credentials'][$key])) {
-                throw new InvalidArgumentException("Missing required credentials parameter: $key");
+                throw new MpesaException("Missing required credentials parameter: $key");
             }
         }
 
         $requiredAppInfo = ['consumerKey', 'consumerSecret'];
         foreach ($requiredAppInfo as $key) {
             if (!isset($config['appInfo'][$key])) {
-                throw new InvalidArgumentException("Missing required appInfo parameter: $key");
+                throw new MpesaException("Missing required appInfo parameter: $key");
             }
         }
     }
@@ -186,7 +186,7 @@ class Mpesa
      * Generates an access token using consumerKey and consumerSecret.
      *
      * @return string
-     * @throws Exception
+     * @throws MpesaException
      */
     private function generateAccessToken(): string
     {
@@ -211,7 +211,7 @@ class Mpesa
         }
 
         $errorMessage = $result['errorMessage'] ?? 'Unknown error occurred';
-        throw new Exception("Failed to generate access token: $errorMessage. Response: $response");
+        throw new MpesaException("Failed to generate access token: $errorMessage. Response: $response");
     }
 
     /**
@@ -219,7 +219,7 @@ class Mpesa
      *
      * @param string $property
      * @return mixed
-     * @throws Exception
+     * @throws MpesaException
      */
     public function __get(string $property)
     {
@@ -227,7 +227,7 @@ class Mpesa
             return $this->$property;
         }
 
-        throw new Exception("Property $property does not exist.");
+        throw new MpesaException("Property $property does not exist.");
     }
 
     /**
@@ -236,14 +236,14 @@ class Mpesa
      * @param string $property
      * @param mixed $value
      * @return void
-     * @throws Exception
+     * @throws MpesaException
      */
     public function __set(string $property, $value): void
     {
         if (property_exists($this, $property)) {
             $this->$property = $value;
         } else {
-            throw new Exception("Property $property does not exist.");
+            throw new MpesaException("Property $property does not exist.");
         }
     }
 
@@ -271,7 +271,7 @@ class Mpesa
      * Send api request to daraja api
      * @param mixed $endPoint
      * @param mixed $data
-     * @throws \Exception
+     * @throws MpesaException
      * @return array
      */
     public function sendRequest($endPoint, $data)
@@ -294,11 +294,11 @@ class Mpesa
         curl_close($curl);
 
         if (!$response) {
-            throw new Exception("No response was received: " . curl_error($curl));
+            throw new MpesaException("No response was received: " . curl_error($curl));
         }
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception("Invalid Json Received");
+            throw new MpesaException("Invalid Json Received");
         }
         return [
             'response' => json_decode($response, true),
@@ -313,27 +313,26 @@ class Mpesa
      * @param mixed $accountNumber  Account number
      * @param mixed $callBackUrl URL to receive webhook
      * @param mixed $description
-     * @throws \InvalidArgumentException
-     * @throws \Exception
+     * @throws MpesaException
      * @return mixed
      */
     public function stkPush($amount, $phoneNumber, $accountNumber, $callBackUrl, $description = "STK Push Request")
     {
         $phoneNumber = $this->formatPhoneNumber($phoneNumber);
         if (!isset($phoneNumber) || empty($phoneNumber)) {
-            throw new InvalidArgumentException("Phone number is required");
+            throw new MpesaException("Phone number is required");
         }
 
         if (!isset($amount) || empty($amount)) {
-            throw new InvalidArgumentException("Amount is required");
+            throw new MpesaException("Amount is required");
         }
 
         if (!isset($accountNumber) || empty($accountNumber)) {
-            throw new InvalidArgumentException("Account Number is required");
+            throw new MpesaException("Account Number is required");
         }
 
         if (!isset($callBackUrl) || empty($callBackUrl)) {
-            throw new InvalidArgumentException("Callback url is required");
+            throw new MpesaException("Callback url is required");
         }
 
         $sendRequest = self::sendRequest("mpesa/stkpush/v1/processrequest", [
@@ -351,11 +350,11 @@ class Mpesa
         ]);
 
         if (!$sendRequest['response']) {
-            throw new Exception("No response received");
+            throw new MpesaException("No response received");
         }
 
         if ($sendRequest['httpCode'] !== 200) {
-            throw new Exception("Request failed with status {$sendRequest['httpCode']}");
+            throw new MpesaException($sendRequest["response"]["ResponseMessage"] ?? $sendRequest["response"]["errorMessage"] ?? "Request failed with status {$sendRequest['httpCode']}");
         }
 
         return $sendRequest['response'];
@@ -365,7 +364,7 @@ class Mpesa
      * Get paybill or till info
      * @param mixed $type  ('till' or 'paybill')
      * @param mixed $shortCode Short code to get info
-     * @throws \Exception
+     * @throws MpesaException
      * @return array
      */
     public function queryOrgInfo($type, $shortCode)
@@ -380,7 +379,7 @@ class Mpesa
                 break;
 
             default:
-                throw new Exception("Identifier type is not supported");
+                throw new MpesaException("Identifier type is not supported");
                 break;
         }
 
@@ -390,11 +389,11 @@ class Mpesa
         ]);
 
         if (!$sendRequest['response']) {
-            throw new Exception("No response received");
+            throw new MpesaException("No response received");
         }
         
         if ($sendRequest['httpCode'] !== 200) {
-            throw new Exception("Request failed with status {$sendRequest['httpCode']}");
+            throw new MpesaException($sendRequest["response"]["ResponseMessage"] ?? $sendRequest["response"]["errorMessage"] ?? "Request failed with status {$sendRequest['httpCode']}");
         }
 
         return $sendRequest['response'];
@@ -405,15 +404,15 @@ class Mpesa
      * @param int $amount Payment amount
      * @param mixed $accountNumber Account Number to pay
      * @param int $size QR Code size
-     * @throws \InvalidArgumentException
-     * @throws \Exception
+     * @throws MpesaException
+     * @throws MpesaException
      * @return array
      */
     public function generateQRCode($amount, $accountNumber, $size = 300)
     {
 
         if (!isset($amount) || empty($amount)) {
-            throw new InvalidArgumentException("Amount is required");
+            throw new MpesaException("Amount is required");
         }
 
         $sendRequest = self::sendRequest("mpesa/qrcode/v1/generate", [
@@ -426,11 +425,11 @@ class Mpesa
         ]);
 
         if (!$sendRequest['response']) {
-            throw new Exception("No response received");
+            throw new MpesaException("No response received");
         }
 
         if ($sendRequest['httpCode'] !== 200) {
-            throw new Exception("Request failed with status {$sendRequest['httpCode']}");
+            throw new MpesaException($sendRequest["response"]["ResponseMessage"] ?? $sendRequest["response"]["errorMessage"] ?? "Request failed with status {$sendRequest['httpCode']}");
         }
 
         return $sendRequest['response'];
@@ -438,14 +437,14 @@ class Mpesa
     /**
      * Query STK Push
      * @param mixed $checkoutRequestCode Checkout request code
-     * @throws \InvalidArgumentException
-     * @throws \Exception
+     * @throws MpesaException
+     * @throws MpesaException
      * @return mixed
      */
     public function stkPushQuery($checkoutRequestCode)
     {
         if (!isset($checkoutRequestCode) || empty($checkoutRequestCode)) {
-            throw new InvalidArgumentException("Checkout request code is required");
+            throw new MpesaException("Checkout request code is required");
         }
 
         $sendRequest = self::sendRequest("mpesa/stkpushquery/v1/query", [
@@ -456,11 +455,11 @@ class Mpesa
         ]);
 
         if (!$sendRequest['response']) {
-            throw new Exception("No response received");
+            throw new MpesaException("No response received");
         }
 
         if ($sendRequest['httpCode'] !== 200) {
-            throw new Exception("Request failed with status {$sendRequest['httpCode']}");
+            throw new MpesaException($sendRequest["response"]["ResponseMessage"] ?? $sendRequest["response"]["errorMessage"] ?? "Request failed with status {$sendRequest['httpCode']}");
         }
 
         return $sendRequest['response'];
@@ -471,19 +470,19 @@ class Mpesa
      * @param mixed $responseType  ('Cancelled' or 'Completed')
      * @param mixed $confirmationUrl This is the URL that receives the confirmation request from API upon payment completion.
      * @param mixed $validationUrl This is the URL that receives the validation request from the API upon payment submission.
-     * @throws \InvalidArgumentException
-     * @throws \Exception
+     * @throws MpesaException
+     * @throws MpesaException
      * @return mixed
      */
     public function registerUrl($responseType, $confirmationUrl, $validationUrl)
     {
 
         if (!isset($confirmationUrl) || empty($confirmationUrl)) {
-            throw new InvalidArgumentException("Confirmation url is required");
+            throw new MpesaException("Confirmation url is required");
         }
 
         if (!isset($validationUrl) || empty($validationUrl)) {
-            throw new InvalidArgumentException("Validation url is required");
+            throw new MpesaException("Validation url is required");
         }
 
         $sendRequest = self::sendRequest("mpesa/c2b/v2/registerurl", [
@@ -494,11 +493,11 @@ class Mpesa
         ]);
 
         if (!$sendRequest['response']) {
-            throw new Exception("No response received");
+            throw new MpesaException("No response received");
         }
 
         if ($sendRequest['httpCode'] !== 200) {
-            throw new Exception("Request failed with status {$sendRequest['httpCode']}");
+            throw new MpesaException($sendRequest["response"]["ResponseMessage"] ?? $sendRequest["response"]["errorMessage"] ?? "Request failed with status {$sendRequest['httpCode']}");
         }
 
         return $sendRequest['response'];
@@ -512,27 +511,27 @@ class Mpesa
      * @param mixed $resultUrl Url to receive webhook
      * @param mixed $queueTimeoutUrl QueueTimeOutURL
      * @param mixed $remarks Payment remarks
-     * @throws \InvalidArgumentException
-     * @throws \Exception
+     * @throws MpesaException
+     * @throws MpesaException
      * @return mixed
      */
     public function initiateB2C($amount, $phoneNumber, $commandID, $resultUrl, $queueTimeoutUrl = null, $remarks = "Business Payment")
     {
 
         if (!isset($amount) || empty($amount)) {
-            throw new InvalidArgumentException("Amount is required");
+            throw new MpesaException("Amount is required");
         }
 
         if (!isset($phoneNumber) || empty($phoneNumber)) {
-            throw new InvalidArgumentException("Phone number is required");
+            throw new MpesaException("Phone number is required");
         }
 
         if (!isset($resultUrl) || empty($resultUrl)) {
-            throw new InvalidArgumentException("Result URL is required");
+            throw new MpesaException("Result URL is required");
         }
 
         if (!in_array($commandID, ['SalaryPayment', 'BusinessPayment', 'PromotionPayment'])) {
-            throw new InvalidArgumentException("Invalid command ID. Must be one of: SalaryPayment, BusinessPayment, PromotionPayment");
+            throw new MpesaException("Invalid command ID. Must be one of: SalaryPayment, BusinessPayment, PromotionPayment");
         }
 
         $sendRequest = self::sendRequest("mpesa/b2c/v1/paymentrequest", [
@@ -549,11 +548,11 @@ class Mpesa
         ]);
 
         if (!$sendRequest['response']) {
-            throw new Exception("No response received");
+            throw new MpesaException("No response received");
         }
 
         if ($sendRequest['httpCode'] !== 200) {
-            throw new Exception("Request failed with status {$sendRequest['httpCode']}");
+            throw new MpesaException($sendRequest["response"]["ResponseMessage"] ?? $sendRequest["response"]["errorMessage"] ?? "Request failed with status {$sendRequest['httpCode']}");
         }
 
         return $sendRequest['response'];
@@ -564,19 +563,19 @@ class Mpesa
      * @param mixed $transactionID Mpesa REF ID to check status
      * @param mixed $resultUrl URL to receive webhook
      * @param mixed $queueTimeoutUrl queueTimeoutUrl
-     * @throws \InvalidArgumentException
-     * @throws \Exception
+     * @throws MpesaException
+     * @throws MpesaException
      * @return mixed
      */
     public function transactionStatus($transactionID, $resultUrl, $queueTimeoutUrl = null)
     {
 
         if (!isset($transactionID) || empty($transactionID)) {
-            throw new InvalidArgumentException("Transaction ID is required");
+            throw new MpesaException("Transaction ID is required");
         }
 
         if (!isset($resultUrl) || empty($resultUrl)) {
-            throw new InvalidArgumentException("Result Url is required");
+            throw new MpesaException("Result Url is required");
         }
 
 
@@ -594,11 +593,11 @@ class Mpesa
         ]);
 
         if (!$sendRequest['response']) {
-            throw new Exception("No response received");
+            throw new MpesaException("No response received");
         }
 
         if ($sendRequest['httpCode'] !== 200) {
-            throw new Exception("Request failed with status {$sendRequest['httpCode']}");
+            throw new MpesaException($sendRequest["response"]["ResponseMessage"] ?? $sendRequest["response"]["errorMessage"] ?? "Request failed with status {$sendRequest['httpCode']}");
         }
 
         return $sendRequest['response'];
@@ -609,15 +608,15 @@ class Mpesa
      * Check account balance
      * @param mixed $resultUrl URL to receive webhook
      * @param mixed $queueTimeoutUrl queueTimeoutUrl
-     * @throws \InvalidArgumentException
-     * @throws \Exception
+     * @throws MpesaException
+     * @throws MpesaException
      * @return mixed
      */
     public function accountBalance($resultUrl, $queueTimeoutUrl = null)
     {
 
         if (!isset($resultUrl) || empty($resultUrl)) {
-            throw new InvalidArgumentException("Result Url is required");
+            throw new MpesaException("Result Url is required");
         }
 
 
@@ -634,11 +633,11 @@ class Mpesa
         ]);
 
         if (!$sendRequest['response']) {
-            throw new Exception("No response received");
+            throw new MpesaException("No response received");
         }
 
         if ($sendRequest['httpCode'] !== 200) {
-            throw new Exception("Request failed with status {$sendRequest['httpCode']}");
+            throw new MpesaException($sendRequest["response"]["ResponseMessage"] ?? $sendRequest["response"]["errorMessage"] ?? "Request failed with status {$sendRequest['httpCode']}");
         }
 
         return $sendRequest['response'];
@@ -650,23 +649,23 @@ class Mpesa
      * @param mixed $transactionID Mpesa ref no for the transaction
      * @param mixed $resultUrl URL to receive webhook
      * @param mixed $queueTimeoutUrl queueTimeoutUrl
-     * @throws \InvalidArgumentException
-     * @throws \Exception
+     * @throws MpesaException
+     * @throws MpesaException
      * @return mixed
      */
     public function reverseTransaction($amount, $transactionID, $resultUrl, $queueTimeoutUrl = null)
     {
 
         if (!isset($transactionID) || empty($transactionID)) {
-            throw new InvalidArgumentException("Transaction ID is required");
+            throw new MpesaException("Transaction ID is required");
         }
 
         if (!isset($amount) || empty($amount)) {
-            throw new InvalidArgumentException("Amount is required");
+            throw new MpesaException("Amount is required");
         }
 
         if (!isset($resultUrl) || empty($resultUrl)) {
-            throw new InvalidArgumentException("Result Url is required");
+            throw new MpesaException("Result Url is required");
         }
 
 
@@ -685,11 +684,11 @@ class Mpesa
         ]);
 
         if (!$sendRequest['response']) {
-            throw new Exception("No response received");
+            throw new MpesaException("No response received");
         }
 
         if ($sendRequest['httpCode'] !== 200) {
-            throw new Exception("Request failed with status {$sendRequest['httpCode']}");
+            throw new MpesaException($sendRequest["response"]["ResponseMessage"] ?? $sendRequest["response"]["errorMessage"] ?? "Request failed with status {$sendRequest['httpCode']}");
         }
 
         return $sendRequest['response'];
@@ -701,23 +700,23 @@ class Mpesa
      * @param mixed $paymentRegistrationNo The payment registration number (PRN) issued by KRA.
      * @param mixed $resultUrl URL to receive webhook
      * @param mixed $queueTimeoutUrl queueTimeoutUrl
-     * @throws \InvalidArgumentException
-     * @throws \Exception
+     * @throws MpesaException
+     * @throws MpesaException
      * @return mixed
      */
     public function taxRemittance($amount, $paymentRegistrationNo, $resultUrl, $queueTimeoutUrl = null)
     {
 
         if (!isset($paymentRegistrationNo) || empty($paymentRegistrationNo)) {
-            throw new InvalidArgumentException("Payment Registration No is required");
+            throw new MpesaException("Payment Registration No is required");
         }
 
         if (!isset($amount) || empty($amount)) {
-            throw new InvalidArgumentException("Amount is required");
+            throw new MpesaException("Amount is required");
         }
 
         if (!isset($resultUrl) || empty($resultUrl)) {
-            throw new InvalidArgumentException("Result Url is required");
+            throw new MpesaException("Result Url is required");
         }
 
 
@@ -737,11 +736,11 @@ class Mpesa
         ]);
 
         if (!$sendRequest['response']) {
-            throw new Exception("No response received");
+            throw new MpesaException("No response received");
         }
 
         if ($sendRequest['httpCode'] !== 200) {
-            throw new Exception("Request failed with status {$sendRequest['httpCode']}");
+            throw new MpesaException($sendRequest["response"]["ResponseMessage"] ?? $sendRequest["response"]["errorMessage"] ?? "Request failed with status {$sendRequest['httpCode']}");
         }
 
         return $sendRequest['response'];
@@ -755,27 +754,27 @@ class Mpesa
      * @param mixed $accountNumber Account number
      * @param mixed $resultUrl URL to receive webhook
      * @param mixed $queueTimeoutUrl queueTimeoutUrl
-     * @throws \InvalidArgumentException
-     * @throws \Exception
+     * @throws MpesaException
+     * @throws MpesaException
      * @return mixed
      */
     public function initiateB2B($amount, $paymentType, $shortCode, $accountNumber, $resultUrl, $queueTimeoutUrl = null)
     {
 
         if (!isset($shortCode) || empty($shortCode)) {
-            throw new InvalidArgumentException("Short code is required");
+            throw new MpesaException("Short code is required");
         }
 
         if (!isset($amount) || empty($amount)) {
-            throw new InvalidArgumentException("Amount is required");
+            throw new MpesaException("Amount is required");
         }
 
         if (!isset($shortCodeType) || empty($shortCodeType) || !in_array($shortCodeType, ['paybill', 'till'])) {
-            throw new InvalidArgumentException("Shode code is invalid. Must be either 'paybill' or 'till'");
+            throw new MpesaException("Shode code is invalid. Must be either 'paybill' or 'till'");
         }
 
         if (!isset($paymentType) || empty($paymentType) || !in_array($paymentType, ['PaybillToPaybill', 'PaybillToTill', 'B2BAccountTopUp'])) {
-            throw new InvalidArgumentException("Payment type is invalid. Must be one of: PaybillToPaybill, PaybillToTill, B2BAccountTopUp");
+            throw new MpesaException("Payment type is invalid. Must be one of: PaybillToPaybill, PaybillToTill, B2BAccountTopUp");
         }
 
         $commandID = match ($paymentType) {
@@ -785,7 +784,7 @@ class Mpesa
         };
 
         if (!isset($resultUrl) || empty($resultUrl)) {
-            throw new InvalidArgumentException("Result Url is required");
+            throw new MpesaException("Result Url is required");
         }
 
 
@@ -806,11 +805,11 @@ class Mpesa
         ]);
 
         if (!$sendRequest['response']) {
-            throw new Exception("No response received");
+            throw new MpesaException("No response received");
         }
 
         if ($sendRequest['httpCode'] !== 200) {
-            throw new Exception("Request failed with status {$sendRequest['httpCode']}");
+            throw new MpesaException($sendRequest["response"]["ResponseMessage"] ?? $sendRequest["response"]["errorMessage"] ?? "Request failed with status {$sendRequest['httpCode']}");
         }
 
         return $sendRequest['response'];
@@ -832,27 +831,27 @@ class Mpesa
      * @param mixed $partnerName Partner name eg Vendor Name
      * @param mixed $paymentRef Payment Ref if not supplied it will be autogenerated an be binded to the response
      * @param mixed $requestRef Request Ref if not supplied it will be autogenerated an be binded to the response
-     * @throws \InvalidArgumentException
-     * @throws \Exception
+     * @throws MpesaException
+     * @throws MpesaException
      * @return mixed
      */
     public function initiateB2BExpressCheckout($amount, $receiverShortCode, $callBackUrl, $partnerName, $paymentRef = null, $requestRef = null)
     {
 
         if (!isset($amount) || empty($amount)) {
-            throw new InvalidArgumentException("Amount is required");
+            throw new MpesaException("Amount is required");
         }
 
         if (!isset($receiverShortCode) || empty($receiverShortCode)) {
-            throw new InvalidArgumentException("Short code is required");
+            throw new MpesaException("Short code is required");
         }
 
         if (!isset($partnerName) || empty($partnerName)) {
-            throw new InvalidArgumentException("Partner Name is required");
+            throw new MpesaException("Partner Name is required");
         }
 
         if (!isset($callBackUrl) || empty($callBackUrl)) {
-            throw new InvalidArgumentException("Callback Url is required");
+            throw new MpesaException("Callback Url is required");
         }
 
         $requestRefID = str_replace(".", "", uniqid('B2B_', true));
@@ -869,11 +868,11 @@ class Mpesa
         ]);
 
         if (!$sendRequest['response']) {
-            throw new Exception("No response received");
+            throw new MpesaException("No response received");
         }
 
         if ($sendRequest['httpCode'] !== 200) {
-            throw new Exception($sendRequest['response']['errorMessage'] ?? "Request failed with status {$sendRequest['httpCode']}");
+            throw new MpesaException($sendRequest['response']['errorMessage'] ?? "Request failed with status {$sendRequest['httpCode']}");
         }
 
         return $sendRequest['response'];
@@ -889,39 +888,39 @@ class Mpesa
      * @param mixed $standingOrderName Standing order name and must be unique
      * @param mixed $callBackUrl URL to receive webhook
      * @param mixed $frequency Payment Frequency  (1 - One Off, 2 - Daily, 3 - Weekly, 4 - Monthly, 5 - Bi-Monthly, 6 - Quarterly, 7 - Half Year, 8 - Yearly)
-     * @throws \InvalidArgumentException
-     * @throws \Exception
+     * @throws MpesaException
+     * @throws MpesaException
      * @return mixed
      */
     public function mpesaRatiba($amount, $phoneNumber, $accountReference, $startDate, $endDate, $standingOrderName, $callBackUrl, $frequency = "2")
     {
 
         if (!isset($amount) || empty($amount)) {
-            throw new InvalidArgumentException("Amount is required");
+            throw new MpesaException("Amount is required");
         }
 
         if (!isset($phoneNumber) || empty($phoneNumber)) {
-            throw new InvalidArgumentException("Phone number is required");
+            throw new MpesaException("Phone number is required");
         }
 
         if (!isset($accountReference) || empty($accountReference)) {
-            throw new InvalidArgumentException("Account reference is required");
+            throw new MpesaException("Account reference is required");
         }
 
         if (!isset($callBackUrl) || empty($callBackUrl)) {
-            throw new InvalidArgumentException("Callback Url is required");
+            throw new MpesaException("Callback Url is required");
         }
 
         if (!isset($startDate) || empty($startDate)) {
-            throw new InvalidArgumentException("Start Date is required");
+            throw new MpesaException("Start Date is required");
         }
 
         if (!isset($endDate) || empty($endDate)) {
-            throw new InvalidArgumentException("End Date is required");
+            throw new MpesaException("End Date is required");
         }
 
         if (!isset($standingOrderName) || empty($standingOrderName)) {
-            throw new InvalidArgumentException("Standing Order Name is required");
+            throw new MpesaException("Standing Order Name is required");
         }
 
         $requestRefID = str_replace(".", "", uniqid('B2B_', true));
@@ -945,11 +944,11 @@ class Mpesa
         ]);
 
         if (!$sendRequest['response']) {
-            throw new Exception("No response received");
+            throw new MpesaException("No response received");
         }
 
         if ($sendRequest['httpCode'] !== 200) {
-            throw new Exception($sendRequest['response']['errorMessage'] ?? "Request failed with status {$sendRequest['httpCode']}");
+            throw new MpesaException($sendRequest['response']['errorMessage'] ?? "Request failed with status {$sendRequest['httpCode']}");
         }
 
         return $sendRequest['response'];
